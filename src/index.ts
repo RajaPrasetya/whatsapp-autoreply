@@ -50,7 +50,7 @@ app.post('/webhook', async (c) => {
 
     // Verify webhook secret if configured
     if (config.webhookSecret) {
-      const providedSecret = c.req.header('x-secret-token') || c.req.header('x-webhook-secret') || c.req.header('authorization')?.replace('Bearer ', '');
+      const providedSecret = c.req.header('x-secret-token');
       if (providedSecret !== config.webhookSecret) {
         logWithTimestamp('Invalid webhook secret');
         return c.json({ error: 'Unauthorized' }, 401);
