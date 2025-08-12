@@ -5,7 +5,7 @@ Service untuk auto reply pesan WhatKonfigurasikan WAHA untuk mengirim webhook ke
 ```bash
 curl -X POST "http://whatsapp.rajaprasetya.web.id/api/webhook" \
   -H "Content-Type: application/json" \
-  -H "X-Secret-Token: YOUR_WAHA_API_KEY" \
+  -H "x-secret-token: YOUR_WAHA_API_KEY" \
   -d '{
     "url": "http://localhost:3006/webhook",
     "events": ["message"],
