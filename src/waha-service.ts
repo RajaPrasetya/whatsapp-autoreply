@@ -24,7 +24,7 @@ export class WAHAService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-secret-token': this.config.webhookSecret
+          'X-Api-Key': this.config.wahaApiKey
         },
         body: JSON.stringify(payload)
       });
@@ -57,7 +57,7 @@ export class WAHAService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-secret-token': this.config.webhookSecret
+          'X-Api-Key': this.config.wahaApiKey
         },
         body: JSON.stringify(payload)
       });
@@ -89,7 +89,7 @@ export class WAHAService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-secret-token': this.config.webhookSecret
+          'X-Api-Key': this.config.wahaApiKey
         },
         body: JSON.stringify(payload)
       });
@@ -121,7 +121,7 @@ export class WAHAService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-secret-token': this.config.webhookSecret
+          'X-Api-Key': this.config.wahaApiKey
         },
         body: JSON.stringify(payload)
       });
