@@ -3,11 +3,11 @@
 Service untuk auto reply pesan WhatKonfigurasikan WAHA untuk mengirim webhook ke service ini:
 
 ```bash
-curl -X POST "http://localhost:3000/api/webhook" \
+curl -X POST "http://whatsapp.rajaprasetya.web.id/api/webhook" \
   -H "Content-Type: application/json" \
   -H "X-Secret-Token: YOUR_WAHA_API_KEY" \
   -d '{
-    "url": "http://localhost:8888/webhook",
+    "url": "http://localhost:3006/webhook",
     "events": ["message"],
     "hmac": false,
     "retries": 3,
@@ -33,20 +33,23 @@ curl -X POST "http://localhost:3000/api/webhook" \
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) v1.0 atau lebih baru
+- [Bun](https://bun.sh) v1.0 atau lebih baru (untuk development)
+- [Docker](https://docker.com) (untuk deployment)
 - [WAHA](https://waha.devlike.pro/) instance yang sudah berjalan
 - WhatsApp Business/Personal account yang terhubung ke WAHA
 
 ## Setup
 
-### 1. Clone dan Install Dependencies
+### Development Setup
+
+#### 1. Clone dan Install Dependencies
 
 ```bash
 cd whatsapp-autoreply
 bun install
 ```
 
-### 2. Konfigurasi Environment
+#### 2. Konfigurasi Environment
 
 Copy file `.env.example` ke `.env` dan isi dengan konfigurasi Anda:
 
@@ -123,6 +126,53 @@ bun run start
 ```bash
 bun run build
 bun dist/index.js
+```
+
+### Docker Deployment
+
+#### 1. Build Docker Image
+
+```bash
+docker build -t whatsapp-autoreply:latest .
+```
+
+#### 2. Run Docker Container
+
+```bash
+docker run -d \
+  --name whatsapp-autoreply \
+  --restart unless-stopped \
+  -p 3006:3006 \
+  -e WAHA_API_URL="http://whatsapp.rajaprasetya.web.id" \
+  -e WAHA_API_KEY="your_api_key_here" \
+  -e SESSION_NAME="default" \
+  -e AUTO_REPLY_ENABLED="true" \
+  -e REPLY_MESSAGE="Terima kasih atas pesan Anda! Kami akan segera merespons." \
+  -e WEBHOOK_SECRET="your_webhook_secret_here" \
+  -e RATE_LIMIT="10" \
+  -e REPLY_DELAY="2000" \
+  -e ALLOWED_NUMBERS="" \
+  whatsapp-autoreply:latest
+```
+
+#### 3. Check Container Status
+
+```bash
+# Check if container is running
+docker ps
+
+# View logs
+docker logs -f whatsapp-autoreply
+
+# Check health
+curl http://localhost:3006/health
+```
+
+#### 4. Stop Container
+
+```bash
+docker stop whatsapp-autoreply
+docker rm whatsapp-autoreply
 ```
 
 ## API Endpoints
