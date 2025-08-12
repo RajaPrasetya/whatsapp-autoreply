@@ -1,6 +1,24 @@
 # WhatsApp Auto-Reply Service
 
-Service untuk auto reply pesan WhatsApp menggunakan Bun, Hono, dan WAHA (WhatsApp HTTP API).
+Service untuk auto reply pesan WhatKonfigurasikan WAHA untuk mengirim webhook ke service ini:
+
+```bash
+curl -X POST "http://localhost:3000/api/webhook" \
+  -H "Content-Type: application/json" \
+  -H "X-Secret-Token: YOUR_WAHA_API_KEY" \
+  -d '{
+    "url": "http://localhost:8888/webhook",
+    "events": ["message"],
+    "hmac": false,
+    "retries": 3,
+    "customHeaders": [
+      {
+        "name": "X-Secret-Token", 
+        "value": "your_webhook_secret_here"
+      }
+    ]
+  }'
+```n, Hono, dan WAHA (WhatsApp HTTP API).
 
 ## Fitur
 
@@ -134,7 +152,7 @@ POST /webhook
 
 Headers:
 ```
-x-webhook-secret: your_webhook_secret_here
+X-Secret-Token: your_webhook_secret_here
 Content-Type: application/json
 ```
 
@@ -163,7 +181,7 @@ Pastikan WAHA instance Anda sudah:
 1. **Started session**: 
    ```bash
    curl -X POST "http://localhost:3000/api/sessions/start" \
-     -H "Authorization: Bearer YOUR_API_KEY" \
+     -H "X-Secret-Token: YOUR_API_KEY" \
      -d '{"name": "default"}'
    ```
 

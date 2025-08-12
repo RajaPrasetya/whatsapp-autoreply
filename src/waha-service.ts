@@ -1,4 +1,5 @@
 import type { Config, WAHASendMessageRequest } from './types';
+import { logWithTimestamp, logErrorWithTimestamp } from './utils';
 
 export class WAHAService {
   private config: Config;
@@ -23,21 +24,21 @@ export class WAHAService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.wahaApiKey}`
+          'X-Secret-Token': this.config.webhookSecret
         },
         body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        console.error(`Failed to send message: ${response.status} ${response.statusText}`);
+        logErrorWithTimestamp(`Failed to send message: ${response.status} ${response.statusText}`);
         return false;
       }
 
       const result = await response.json();
-      console.log(`Message sent successfully to ${chatId}:`, result);
+      logWithTimestamp(`Message sent successfully to ${chatId}:`, result);
       return true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      logErrorWithTimestamp('Error sending message:', error);
       return false;
     }
   }
@@ -93,19 +94,19 @@ export class WAHAService {
   async processMessage(chatId: string, senderId: string, messageBody: string): Promise<void> {
     // Skip if auto-reply is disabled
     if (!this.config.autoReplyEnabled) {
-      console.log('Auto-reply is disabled');
+      logWithTimestamp('Auto-reply is disabled');
       return;
     }
 
     // Check if number is allowed
     if (!this.isNumberAllowed(senderId)) {
-      console.log(`Number ${senderId} is not in allowed list`);
+      logWithTimestamp(`Number ${senderId} is not in allowed list`);
       return;
     }
 
     // Check rate limit
     if (!this.isWithinRateLimit(senderId)) {
-      console.log(`Rate limit exceeded for ${senderId}`);
+      logWithTimestamp(`Rate limit exceeded for ${senderId}`);
       return;
     }
 
@@ -120,7 +121,7 @@ export class WAHAService {
     if (success) {
       // Update rate limit tracking
       this.addToRateLimit(senderId);
-      console.log(`Auto-reply sent to ${senderId} in chat ${chatId}`);
+      logWithTimestamp(`Auto-reply sent to ${senderId} in chat ${chatId}`);
     }
   }
 }

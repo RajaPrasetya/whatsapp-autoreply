@@ -4,10 +4,11 @@ import { logger } from 'hono/logger';
 import type { WebhookPayload } from './types';
 import { WAHAService } from './waha-service';
 import { loadConfig } from './config';
+import { logWithTimestamp, logErrorWithTimestamp, getCurrentTimestamp } from './utils';
 
 // Load configuration
 const config = loadConfig();
-console.log('Configuration loaded:', {
+logWithTimestamp('Configuration loaded:', {
   ...config,
   wahaApiKey: '***hidden***',
   webhookSecret: '***hidden***'
@@ -31,7 +32,7 @@ app.use('*', cors({
 app.get('/health', (c) => {
   return c.json({ 
     status: 'ok', 
-    timestamp: new Date().toISOString(),
+    timestamp: getCurrentTimestamp() + ' SGT',
     config: {
       autoReplyEnabled: config.autoReplyEnabled,
       sessionName: config.sessionName,
@@ -45,13 +46,13 @@ app.post('/webhook', async (c) => {
   try {
     const body = await c.req.json() as WebhookPayload;
     
-    console.log('Received webhook:', JSON.stringify(body, null, 2));
+    logWithTimestamp('Received webhook:', JSON.stringify(body, null, 2));
 
     // Verify webhook secret if configured
     if (config.webhookSecret) {
-      const providedSecret = c.req.header('x-webhook-secret') || c.req.header('authorization')?.replace('Bearer ', '');
+      const providedSecret = c.req.header('x-secret-token') || c.req.header('x-webhook-secret') || c.req.header('authorization')?.replace('Bearer ', '');
       if (providedSecret !== config.webhookSecret) {
-        console.log('Invalid webhook secret');
+        logWithTimestamp('Invalid webhook secret');
         return c.json({ error: 'Unauthorized' }, 401);
       }
     }
@@ -62,13 +63,13 @@ app.post('/webhook', async (c) => {
       
       // Skip messages sent by us (fromMe = true)
       if (message.fromMe) {
-        console.log('Skipping message from self');
+        logWithTimestamp('Skipping message from self');
         return c.json({ status: 'ignored', reason: 'fromMe' });
       }
 
       // Skip non-text messages
       if (message.type !== 'chat') {
-        console.log(`Skipping non-text message type: ${message.type}`);
+        logWithTimestamp(`Skipping non-text message type: ${message.type}`);
         return c.json({ status: 'ignored', reason: 'non-text' });
       }
 
@@ -88,11 +89,11 @@ app.post('/webhook', async (c) => {
     }
 
     // Handle other events
-    console.log(`Received event: ${body.event}`);
+    logWithTimestamp(`Received event: ${body.event}`);
     return c.json({ status: 'received', event: body.event });
 
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    logErrorWithTimestamp('Error processing webhook:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -112,11 +113,11 @@ app.post('/send', async (c) => {
       success,
       chatId,
       message,
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentTimestamp() + ' SGT'
     });
 
   } catch (error) {
-    console.error('Error sending manual message:', error);
+    logErrorWithTimestamp('Error sending manual message:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -134,21 +135,21 @@ app.get('/config', (c) => {
 });
 
 // Start server
-console.log(`🚀 Starting WhatsApp Auto-Reply Service...`);
+logWithTimestamp(`🚀 Starting WhatsApp Auto-Reply Service...`);
 
 const server = Bun.serve({
   port: config.port,
   fetch: app.fetch,
 });
 
-console.log(`🚀 WhatsApp Auto-Reply Service running on port ${server.port}`);
-console.log(`📊 Health check: http://localhost:${server.port}/health`);
-console.log(`🪝 Webhook endpoint: http://localhost:${server.port}/webhook`);
-console.log(`⚙️  Configuration: http://localhost:${server.port}/config`);
+logWithTimestamp(`🚀 WhatsApp Auto-Reply Service running on port ${server.port}`);
+logWithTimestamp(`📊 Health check: http://localhost:${server.port}/health`);
+logWithTimestamp(`🪝 Webhook endpoint: http://localhost:${server.port}/webhook`);
+logWithTimestamp(`⚙️  Configuration: http://localhost:${server.port}/config`);
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n👋 Shutting down gracefully...');
+  logWithTimestamp('\n👋 Shutting down gracefully...');
   server.stop();
   process.exit(0);
 });
