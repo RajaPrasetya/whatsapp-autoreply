@@ -44,6 +44,102 @@ export class WAHAService {
   }
 
   /**
+   * Send seen status for message
+   */
+  async sendSeen(chatId: string): Promise<boolean> {
+    try {
+      const payload = {
+        chatId,
+        session: this.config.sessionName
+      };
+
+      const response = await fetch(`${this.config.wahaApiUrl}/api/sendSeen`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Secret-Token': this.config.webhookSecret
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        logErrorWithTimestamp(`Failed to send seen: ${response.status} ${response.statusText}`);
+        return false;
+      }
+
+      logWithTimestamp(`Seen status sent for ${chatId}`);
+      return true;
+    } catch (error) {
+      logErrorWithTimestamp('Error sending seen:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Start typing indicator
+   */
+  async startTyping(chatId: string): Promise<boolean> {
+    try {
+      const payload = {
+        chatId,
+        session: this.config.sessionName
+      };
+
+      const response = await fetch(`${this.config.wahaApiUrl}/api/startTyping`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Secret-Token': this.config.webhookSecret
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        logErrorWithTimestamp(`Failed to start typing: ${response.status} ${response.statusText}`);
+        return false;
+      }
+
+      logWithTimestamp(`Started typing for ${chatId}`);
+      return true;
+    } catch (error) {
+      logErrorWithTimestamp('Error starting typing:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Stop typing indicator
+   */
+  async stopTyping(chatId: string): Promise<boolean> {
+    try {
+      const payload = {
+        chatId,
+        session: this.config.sessionName
+      };
+
+      const response = await fetch(`${this.config.wahaApiUrl}/api/stopTyping`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Secret-Token': this.config.webhookSecret
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        logErrorWithTimestamp(`Failed to stop typing: ${response.status} ${response.statusText}`);
+        return false;
+      }
+
+      logWithTimestamp(`Stopped typing for ${chatId}`);
+      return true;
+    } catch (error) {
+      logErrorWithTimestamp('Error stopping typing:', error);
+      return false;
+    }
+  }
+
+  /**
    * Check if sender is within rate limit
    */
   isWithinRateLimit(senderId: string): boolean {
@@ -89,7 +185,7 @@ export class WAHAService {
   }
 
   /**
-   * Process incoming message and send auto-reply if needed
+   * Process incoming message and send auto-reply following WhatsApp best practices
    */
   async processMessage(chatId: string, senderId: string, messageBody: string): Promise<void> {
     // Skip if auto-reply is disabled
@@ -110,18 +206,37 @@ export class WAHAService {
       return;
     }
 
-    // Add delay before sending reply
-    if (this.config.replyDelay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.config.replyDelay));
-    }
+    try {
+      // Step 1: Send seen to indicate message was read
+      logWithTimestamp(`Processing message from ${senderId}: "${messageBody}"`);
+      await this.sendSeen(chatId);
+      
+      // Small delay after seen
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Send auto-reply
-    const success = await this.sendMessage(chatId, this.config.replyMessage);
-    
-    if (success) {
-      // Update rate limit tracking
-      this.addToRateLimit(senderId);
-      logWithTimestamp(`Auto-reply sent to ${senderId} in chat ${chatId}`);
+      // Step 2: Start typing indicator
+      await this.startTyping(chatId);
+      
+      // Step 3: Wait for random interval (simulate human typing time)
+      const typingDelay = Math.random() * (this.config.replyDelay - 1000) + 1000; // Random between 1s to replyDelay
+      await new Promise(resolve => setTimeout(resolve, typingDelay));
+
+      // Step 4: Stop typing indicator
+      await this.stopTyping(chatId);
+      
+      // Small delay after stopping typing
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Step 5: Send the actual message
+      const success = await this.sendMessage(chatId, this.config.replyMessage);
+      
+      if (success) {
+        // Update rate limit tracking
+        this.addToRateLimit(senderId);
+        logWithTimestamp(`Auto-reply sequence completed for ${senderId} in chat ${chatId}`);
+      }
+    } catch (error) {
+      logErrorWithTimestamp(`Error in processMessage for ${senderId}:`, error);
     }
   }
 }
