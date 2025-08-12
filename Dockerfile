@@ -4,16 +4,19 @@ FROM oven/bun:1.1.27-alpine AS base
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json bun.lockb* ./
+# Install curl for health checks
+RUN apk add --no-cache curl
 
-# Install dependencies
-RUN bun install --frozen-lockfile --production
+# Copy package files first for better caching
+COPY package.json ./
+COPY bun.lockb* ./
 
-# Copy source code
+# Install dependencies including dev dependencies for build
+RUN bun install --frozen-lockfile
+
+# Copy source code and config files
 COPY src ./src
 COPY tsconfig.json ./
-COPY .env.example ./
 
 # Build the application
 RUN bun run build
@@ -24,15 +27,23 @@ FROM oven/bun:1.1.27-alpine AS production
 # Set working directory
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S bun -u 1001
+# Install curl for health checks
+RUN apk add --no-cache curl
 
-# Copy built application and dependencies
-COPY --from=base --chown=bun:nodejs /app/node_modules ./node_modules
-COPY --from=base --chown=bun:nodejs /app/dist ./dist
-COPY --from=base --chown=bun:nodejs /app/package.json ./
-COPY --from=base --chown=bun:nodejs /app/.env.example ./
+# Create non-root user for security
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+# Copy only production dependencies
+COPY package.json ./
+RUN bun install --frozen-lockfile --production && \
+    bun pm cache rm
+
+# Copy built application from base stage
+COPY --from=base --chown=appuser:appgroup /app/dist ./dist
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /app
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -42,11 +53,11 @@ ENV PORT=3006
 EXPOSE 3006
 
 # Switch to non-root user
-USER bun
+USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD bun --version || exit 1
+# Health check with curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3006/health || exit 1
 
 # Start the application
 CMD ["bun", "run", "dist/index.js"]
